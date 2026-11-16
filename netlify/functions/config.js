@@ -36,12 +36,12 @@ exports.handler = async (event) => {
 
   const config = getPublicSupabaseConfig();
   return {
-    statusCode: config ? 200 : 503,
+    statusCode: 200,
     headers: {
       'Cache-Control': 'no-store',
-      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Type': 'application/javascript; charset=utf-8',
       'X-Content-Type-Options': 'nosniff'
     },
-    body: JSON.stringify(config || { error: 'Supabase is not configured.' })
+    body: `window.APP_CONFIG = ${JSON.stringify(config || {})};`
   };
 };

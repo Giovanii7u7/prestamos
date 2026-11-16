@@ -388,7 +388,7 @@ function setDefaultDates() {
 
 async function start() {
   if (!window.APP_CONFIG?.supabaseUrl || !window.APP_CONFIG?.supabaseKey) {
-    showLogin('Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en el servidor.');
+    showLogin('Faltan SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY en las variables de entorno de Netlify.');
     return;
   }
   if (!window.supabase?.createClient) {

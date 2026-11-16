@@ -4,6 +4,7 @@
   "description": "",
   "main": "main.js",
   "scripts": {
+    "build": "node build-netlify.js",
     "start": "node server.js"
   },
   "author": "",

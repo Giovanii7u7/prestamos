@@ -1,6 +1,6 @@
 # MisPréstamos
 
-La aplicación de escritorio existente sigue usando `main.js` e `index.html`. La versión web para Railway usa `server.js`, `web.html` y `app.js`; el servidor web no sirve `data.json` ni expone las rutas antiguas `/data`.
+La aplicación de escritorio existente sigue usando `main.js` e `index.html`. La versión web usa `web.html` y `app.js`; no publica `data.json` ni las rutas antiguas `/data`.
 
 ## Preparar Supabase
 
@@ -10,6 +10,18 @@ La aplicación de escritorio existente sigue usando `main.js` e `index.html`. La
 4. No importes el JSON hasta crear los clientes y revisar qué préstamos corresponden a cada perfil.
 
 La clave que se usa en el navegador es la clave **Publishable** (o la antigua clave `anon`). Nunca configures `service_role` ni una clave `secret` en la aplicación.
+
+## Netlify
+
+El repositorio incluye `netlify.toml` y una función que entrega la configuración pública de Supabase sin guardar credenciales en el código.
+
+1. En Netlify, importa el repositorio privado de GitHub `prestamos`.
+2. Usa el comando de compilación `npm run build` y el directorio de publicación `dist`. Netlify puede leer estos valores directamente de `netlify.toml`.
+3. En **Site configuration → Environment variables**, agrega `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` (o la antigua clave `SUPABASE_ANON_KEY`).
+4. No agregues claves `service_role` o `secret`. Después de agregar variables, vuelve a desplegar el sitio.
+5. Comprueba `/health` no aplica en Netlify. Abre `/.netlify/functions/config`: debe devolver el URL y la clave Publishable en JSON, nunca una clave secreta. Luego abre la URL del sitio para iniciar sesión.
+
+Netlify recibe solo la carpeta `dist`; la base de datos queda en Supabase. Los archivos `data.json`, `main.js` y la aplicación Electron no forman parte del sitio publicado.
 
 ## Ejecutar localmente
 
@@ -21,11 +33,11 @@ $env:SUPABASE_PUBLISHABLE_KEY = "TU-CLAVE-PUBLISHABLE"
 npm start
 ```
 
-Abre `http://localhost:3000`. Las variables no se guardan en los archivos del proyecto.
+Para probar la versión Express local, abre `http://localhost:3000`. Las variables no se guardan en los archivos del proyecto.
 
-## Railway
+## Railway (alternativa)
 
-Despliega este proyecto como servicio Node.js desde un repositorio Git. Railway ejecuta `npm start` y proporciona el puerto mediante `PORT`. En **Variables** agrega:
+La versión Express también se puede ejecutar como servicio Node.js desde Railway. Railway ejecuta `npm start` y proporciona el puerto mediante `PORT`. En **Variables** agrega:
 
 - `SUPABASE_URL`: URL del proyecto Supabase.
 - `SUPABASE_PUBLISHABLE_KEY`: clave Publishable (o usa `SUPABASE_ANON_KEY` para la clave antigua `anon`).

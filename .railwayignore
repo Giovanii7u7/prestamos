@@ -1,0 +1,7 @@
+node_modules
+data.json
+index2.html
+main.js
+icon.ico
+.env
+.env.*

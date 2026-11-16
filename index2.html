@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Préstamos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Mis<span>Préstamos</span></div>
+  <div class="date-badge" id="today-badge">Hoy: 20/04/2026</div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('resumen',this)">Resumen</button>
+    <button class="tab" onclick="showTab('prestamos',this)">Préstamos</button>
+    <button class="tab" onclick="showTab('movimientos',this)">Movimientos</button>
+    <button class="tab" onclick="showTab('nuevo',this)">+ Agregar</button>
+  </div>
+
+  <!-- RESUMEN -->
+  <div id="resumen" class="section active">
+    <div class="cards-row" id="sc"></div>
+    <p class="section-title">Cobros — próximos lunes</p>
+    <div class="card" id="cal"></div>
+    <br>
+    <p class="section-title">Advertencia financiera</p>
+    <div class="card" id="warning-card"></div>
+  </div>
+
+  <!-- PRÉSTAMOS -->
+  <div id="prestamos" class="section" id="ll"></div>
+
+  <!-- MOVIMIENTOS -->
+  <div id="movimientos" class="section">
+    <div class="card">
+      <table>
+        <thead><tr><th>Fecha</th><th>Persona</th><th>Tipo</th><th>Monto</th><th>Nota</th></tr></thead>
+        <tbody id="mb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- NUEVO -->
+  <div id="nuevo" class="section">
+    <div class="card">
+      <p style="font-size:15px;font-weight:600;margin-bottom:1rem">Registrar movimiento</p>
+      <div class="frow">
+        <div class="fg"><label>Tipo</label>
+          <select id="nt" onchange="uf()">
+            <option value="pago">Pago recibido</option>
+            <option value="prestamo">Nuevo préstamo</option>
+          </select>
+        </div>
+        <div class="fg"><label>Persona</label>
+          <select id="np">
+            <option value="mama">Mamá</option>
+            <option value="papa">Papá</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Monto ($)</label><input type="number" id="na" placeholder="0" min="0" /></div>
+        <div class="fg"><label>Fecha</label><input type="date" id="nd" /></div>
+      </div>
+      <div id="le" style="display:none">
+        <div class="frow">
+          <div class="fg"><label>Interés (%)</label><input type="number" id="ni" value="25" min="0" /></div>
+          <div class="fg"><label>Pago semanal ($)</label><input type="number" id="nw" placeholder="200" min="0" /></div>
+        </div>
+      </div>
+      <div id="pago-loan" style="display:none;margin-bottom:14px">
+        <div class="fg"><label>Aplicar a préstamo</label><select id="nl"></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Nota (opcional)</label><input type="text" id="nn" placeholder="Ej: pago semana 2" /></div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn btnp" onclick="addMov()">Guardar</button></div>
+      <p class="msg-ok" id="nm"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+var SD = new Date('2026-04-20T12:00:00');
+
+function maf(d,w){var r=new Date(d);r.setDate(r.getDate()+w*7);return r;}
+function fmt(d){return d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function fmtShort(d){return d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});}
+function ps(n){return '$'+Math.round(n).toLocaleString('es-MX');}
+
+document.getElementById('today-badge').textContent='Hoy: '+fmtShort(SD);
+
+var loans = [];
+var movs = [];
+async function loadData(){
+  try{
+    const res = await fetch('/data');
+    const data = await res.json();
+
+    loans = data.loans || [];
+    movs = data.movs || [];
+
+  }catch(e){
+    console.log("No hay backend, usando localStorage");
+
+    loans = JSON.parse(localStorage.getItem("loans")) || [];
+    movs = JSON.parse(localStorage.getItem("movs")) || [];
+  }
+
+  rs();
+  rl();
+  rm();
+}
+
+
+function rs(){
+  var tp=loans.reduce(function(s,l){return s+l.principal;},0);
+  var tc=loans.reduce(function(s,l){return s+(l.total-l.pa);},0);
+  var tg=loans.reduce(function(s,l){return s+l.interest;},0);
+  var la=loans.filter(function(l){return l.active;}).length;
+  document.getElementById('sc').innerHTML=
+    '<div class="metric"><div class="metric-label">Capital prestado</div><div class="metric-value">'+ps(tp)+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Por cobrar</div><div class="metric-value b">'+ps(tc)+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Ganancia bruta</div><div class="metric-value g">'+ps(tg)+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Préstamos activos</div><div class="metric-value">'+la+'</div></div>';
+
+  var cal='';
+  var shown=0;
+  for(var w=0;w<12&&shown<8;w++){
+    var d=maf(SD,w);
+    var cob=[];
+    loans.forEach(function(loan){
+      if(!loan.active)return;
+      for(var wk=loan.pw;wk<loan.wt;wk++){
+        var pd=maf(loan.sd,wk);
+        if(fmtShort(pd)===fmtShort(d)){cob.push({name:loan.name,p:loan.person,amt:loan.wp,id:loan.id});}
+      }
+    });
+    if(!cob.length)continue;
+    shown++;
+    var tot=cob.reduce(function(s,c){return s+c.amt;},0);
+    var tod=fmtShort(d)===fmtShort(SD);
+    cal+='<div class="wrow"><span class="wlabel" style="'+(tod?'font-weight:600;color:var(--text)':'')+'">'+fmtShort(d)+(tod?' (hoy)':'')+'</span><span class="wamt">'+ps(tot)+'</span><span class="wdetail">'+cob.map(function(c){return c.name+' '+ps(c.amt);}).join(' · ')+'</span><span class="dot '+(tod?'dot-g':'dot-p')+'"></span></div>';
+  }
+  document.getElementById('cal').innerHTML=cal||'<p style="font-size:13px;color:var(--text2)">Sin cobros próximos</p>';
+
+  var papaLoans=loans.filter(function(l){return l.person==='papa'&&l.active;});
+  var warn='';
+  if(papaLoans.length>1){
+    var totalPapaDebt=papaLoans.reduce(function(s,l){return s+(l.total-l.pa);},0);
+    var totalPapaPaid=papaLoans.reduce(function(s,l){return s+l.pa;},0);
+    warn='<p style="font-size:14px;font-weight:600;margin-bottom:8px">⚠ Situación con Papá</p>';
+    warn+='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Tiene <strong>'+papaLoans.length+' préstamos activos</strong> por un total de <strong>'+ps(totalPapaDebt)+'</strong> pendientes.</p>';
+    warn+='<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Al pedir prestado cada lunes, su deuda no baja realmente. En términos puramente numéricos estás ganando el interés de cada préstamo, pero tu capital expuesto crece.</p>';
+    warn+='<p style="font-size:13px;color:var(--text2)">Asegúrate de cobrar antes de prestar de nuevo para que los ciclos cierren.</p>';
+  } else {
+    warn='<p style="font-size:13px;color:var(--text2)">Todo en orden. Mantén los ciclos separados y cobra antes de prestar de nuevo.</p>';
+  }
+  document.getElementById('warning-card').innerHTML=warn;
+}
+
+function rl(){
+  var h='';
+  loans.forEach(function(l){
+    var rem=l.total-l.pa;
+    var pct=Math.round((l.pa/l.total)*100);
+    var col=l.person==='mama'?'var(--green)':'var(--blue)';
+    var av=l.person==='mama'?'MA':'PA';
+    var avc=l.person==='mama'?'av-m':'av-p';
+    var bc=l.person==='mama'?'badge-g':'badge-b';
+    h+='<div class="card">'+
+      '<div class="card-header">'+
+        '<div class="person-info">'+
+          '<div class="av '+avc+'">'+av+'</div>'+
+          '<div><div class="person-name">'+l.name+' — Préstamo #'+l.id+'</div><div class="person-note">'+l.note+'</div></div>'+
+        '</div>'+
+        '<span class="badge '+(l.active?bc:'badge-o')+'">'+(l.active?'activo':'pagado')+'</span>'+
+      '</div>'+
+      '<div class="pbar"><div class="pfill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:10px"><span>'+ps(l.pa)+' cobrado</span><span>'+pct+'%</span><span>'+ps(rem)+' pendiente</span></div>'+
+      '<div class="grid3">'+
+        '<div><div class="dl">Prestado</div><div class="dv">'+ps(l.principal)+'</div></div>'+
+        '<div><div class="dl">Total a cobrar</div><div class="dv">'+ps(l.total)+'</div></div>'+
+        '<div><div class="dl">Ganancia</div><div class="dv g">'+l.pct+'% = '+ps(l.interest)+'</div></div>'+
+        '<div><div class="dl">Pago semanal</div><div class="dv">'+ps(l.wp)+'</div></div>'+
+        '<div><div class="dl">Semanas (pagadas/total)</div><div class="dv">'+l.pw+' / '+l.wt+'</div></div>'+
+        '<div><div class="dl">Inicio</div><div class="dv">'+fmtShort(l.sd)+'</div></div>'+
+      '</div></div>';
+  });
+  document.getElementById('prestamos').innerHTML=h;
+}
+
+function rm(){
+  var h='';
+  var rev=movs.slice().reverse();
+  rev.forEach(function(m){
+    var ii=m.type==='pago';
+    var avc=m.person==='mama'?'av-m':'av-p';
+    var avl=m.person==='mama'?'MA':'PA';
+    h+='<tr>'+
+      '<td>'+fmtShort(m.date)+'</td>'+
+      '<td><span style="display:inline-flex;align-items:center;gap:6px"><span class="av '+avc+'" style="width:24px;height:24px;font-size:10px">'+avl+'</span>'+m.name+'</span></td>'+
+      '<td>'+(ii?'Pago':'Préstamo')+'</td>'+
+      '<td class="'+(ii?'ai':'ao')+'">'+(ii?'+':'')+ps(m.amount)+'</td>'+
+      '<td class="note-td">'+m.note+'</td>'+
+    '</tr>';
+  });
+  document.getElementById('mb').innerHTML=h;
+}
+
+function showTab(id,el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+function uf(){
+  var t=document.getElementById('nt').value;
+  document.getElementById('le').style.display=t==='prestamo'?'block':'none';
+  document.getElementById('pago-loan').style.display=t==='pago'?'block':'none';
+  if(t==='pago') updateLoanSelector();
+}
+
+function updateLoanSelector(){
+  var person=document.getElementById('np').value;
+  var sel=document.getElementById('nl');
+  sel.innerHTML='';
+  loans.filter(function(l){return l.active;}).forEach(function(l){
+    var o=document.createElement('option');
+    o.value=l.id;
+    o.textContent='#'+l.id+' '+l.name+' — '+ps(l.total-l.pa)+' pendiente';
+    sel.appendChild(o);
+  });
+}
+
+document.getElementById('np').addEventListener('change', function(){
+  if(document.getElementById('nt').value==='pago') updateLoanSelector();
+});
+
+function addMov(){
+  var type = document.getElementById('nt').value;
+  var person = document.getElementById('np').value;
+  var amount = parseFloat(document.getElementById('na').value) || 0;
+  var dv = document.getElementById('nd').value;
+  var date = dv ? new Date(dv+'T12:00:00') : new Date();
+  var note = document.getElementById('nn').value || '';
+
+  if(!amount){
+    alert('Ingresa un monto válido.');
+    return;
+  }
+
+  var name = person === 'mama' ? 'Mamá' : 'Papá';
+
+  // =========================
+  // 📌 NUEVO PRÉSTAMO
+  // =========================
+  if(type === 'prestamo'){
+
+    var interest = parseFloat(document.getElementById('ni').value) || 25;
+    var weekly = parseFloat(document.getElementById('nw').value) || amount;
+
+    var total = Math.round(amount * (1 + interest / 100));
+    var weeks = Math.ceil(total / weekly);
+    var newId = loans.length + 1;
+
+    var newLoan = {
+      id: newId,
+      person: person,
+      name: name,
+      principal: amount,
+      total: total,
+      interest: total - amount,
+      pct: interest,
+      wp: weekly,
+      wt: weeks,
+      sd: date,
+      pw: 0,
+      pa: 0,
+      active: true,
+      note: note || 'Préstamo registrado'
+    };
+
+    loans.push(newLoan);
+
+    movs.push({
+      date: date,
+      person: person,
+      name: name,
+      type: 'prestamo',
+      amount: -amount,
+      loanId: newId,
+      bal: null,
+      note: note || 'Nuevo préstamo de ' + ps(amount)
+    });
+
+  }
+
+  // =========================
+  // 📌 PAGO
+  // =========================
+  else {
+
+    var loanId = parseInt(document.getElementById('nl').value) || 0;
+
+    var found = loans.find(l => l.id === loanId && l.active);
+
+    if(!found){
+      alert('Selecciona un préstamo válido.');
+      return;
+    }
+
+    // Aplicar pago
+    found.pa += amount;
+    found.pw += 1;
+
+    // Si se liquida
+    if(found.pa >= found.total){
+      found.pa = found.total;
+      found.active = false;
+    }
+
+    movs.push({
+      date: date,
+      person: person,
+      name: name,
+      type: 'pago',
+      amount: amount,
+      loanId: found.id,
+      bal: Math.max(0, found.total - found.pa),
+      note: note || 'Pago registrado'
+    });
+  }
+
+  // =========================
+  // 💾 GUARDADO 
+  // =========================
+      saveData();
+  // =========================
+  // 🧹 LIMPIAR FORM
+  // =========================
+  document.getElementById('na').value = '';
+  document.getElementById('nn').value = '';
+
+  var msg = document.getElementById('nm');
+  msg.style.display = 'block';
+  msg.textContent = type === 'pago'
+    ? '✓ Pago registrado correctamente.'
+    : '✓ Préstamo registrado.';
+
+  setTimeout(function(){
+    msg.style.display = 'none';
+  }, 2500);
+
+  // =========================
+  // 🔄 REFRESH UI
+  // =========================
+  rs();
+  rl();
+  rm();
+}
+
+function saveData(){
+  localStorage.setItem("loans", JSON.stringify(loans));
+  localStorage.setItem("movs", JSON.stringify(movs));
+
+  fetch('/data',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({loans, movs})
+  }).catch(()=>{});
+}
+
+
+document.getElementById('nd').value='2026-04-20';
+loadData();
+</script>
+</body>
+</html>
+

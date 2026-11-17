@@ -24,6 +24,15 @@ const dateText = (value) => {
   const [year, month, day] = String(value).slice(0, 10).split('-');
   return `${day}/${month}/${year}`;
 };
+const longDateText = (value) => {
+  if (!value) return '—';
+  const [year, month, day] = String(value).slice(0, 10).split('-').map(Number);
+  return new Date(year, month - 1, day, 12).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
 
 function message(element, text, kind = 'error') {
   element.textContent = text;
@@ -344,7 +353,7 @@ function renderClientLoan(root, loan, paid) {
     const startDate = document.createElement('div');
     startDate.className = 'client-highlight';
     appendText(startDate, 'span', 'client-highlight-label', 'Fecha de inicio');
-    appendText(startDate, 'strong', 'client-highlight-value date', dateText(loan.sd));
+    appendText(startDate, 'strong', 'client-highlight-value date', longDateText(loan.sd));
     highlights.append(weekly, startDate);
     card.append(highlights);
     root.append(card);
@@ -547,6 +556,17 @@ async function start() {
     });
     if (error) message(byId('login-message'), error.message);
     busy(form, false);
+  });
+
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = byId(button.dataset.passwordToggle);
+      const isVisible = input.type === 'text';
+      input.type = isVisible ? 'password' : 'text';
+      button.textContent = isVisible ? 'Mostrar' : 'Ocultar';
+      button.setAttribute('aria-pressed', String(!isVisible));
+      button.setAttribute('aria-label', `${isVisible ? 'Mostrar' : 'Ocultar'} contraseña`);
+    });
   });
 
   byId('password-setup-form').addEventListener('submit', async (event) => {

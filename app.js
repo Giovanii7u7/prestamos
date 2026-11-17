@@ -212,7 +212,7 @@ function renderAdminLoans() {
     appendText(card, 'p', 'money', `${money(loan.pa)} cobrado · ${percent}%`);
     moneyLine(card, 'Prestado', loan.principal);
     moneyLine(card, 'Pendiente', Math.max(0, loan.total - loan.pa));
-    moneyLine(card, 'Total / interés', `${money(loan.total)} / ${loan.pct}%`);
+    appendText(card, 'p', 'muted', `Total / interés: ${money(loan.total)} / ${loan.pct}%`);
     moneyLine(card, 'Pago semanal', loan.wp);
     appendText(card, 'p', 'muted', `Inicio: ${dateText(loan.sd)} · Semanas pagadas: ${loan.pw}/${loan.wt}`);
     appendText(card, 'p', 'muted', loan.note || '');
@@ -397,7 +397,8 @@ async function updateLoan(event, id, form) {
   const pct = Number(values.get('pct'));
   const weekly = Number(values.get('wp'));
   const paid = Number(values.get('pa'));
-  if (weekly <= 0 || paid > principal * (1 + pct / 100)) {
+  const total = Math.round(principal * (1 + pct / 100));
+  if (weekly <= 0 || paid > total) {
     setAdminMessage('Revisa el pago semanal y el monto pagado.', 'error');
     return;
   }
@@ -406,7 +407,6 @@ async function updateLoan(event, id, form) {
     return;
   }
   const ownerName = owner?.full_name || existingLoan.name || existingLoan.person;
-  const total = Math.round(principal * (1 + pct / 100));
   const { error } = await supabaseClient.from('loans').update({
     owner_id: owner?.id || currentUser.id,
     person: owner?.full_name || existingLoan.person,

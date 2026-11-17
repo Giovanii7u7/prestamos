@@ -23,6 +23,10 @@ El repositorio incluye `netlify.toml` y una función que entrega la configuraci�
 
 Netlify recibe solo la carpeta `dist`; la base de datos queda en Supabase. Los archivos `data.json`, `main.js` y la aplicación Electron no forman parte del sitio publicado.
 
+## Instalar en Android
+
+Después de publicar los cambios en Netlify, abre la URL pública del sitio en Chrome para Android, inicia sesión y usa el menú de Chrome → **Instalar aplicación** o **Agregar a pantalla principal**. El icono y el nombre se definen en `public/manifest.webmanifest`.
+
 ## Ejecutar localmente
 
 Configura estas variables en la terminal antes de iniciar el servidor:

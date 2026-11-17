@@ -70,6 +70,12 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
+app.get('/manifest.webmanifest', (_req, res) => {
+  res.sendFile(path.join(projectRoot, 'public', 'manifest.webmanifest'));
+});
+
+app.use('/icons', express.static(path.join(projectRoot, 'public', 'icons')));
+
 app.get('/vendor/supabase.js', (_req, res, next) => {
   res.sendFile(supabaseBundle, (error) => {
     if (error) next(error);

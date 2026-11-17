@@ -6,6 +6,7 @@ let loans = [];
 let movements = [];
 let authNotice = '';
 let legacyImportData = null;
+let passwordSetupRequired = false;
 
 const byId = (id) => document.getElementById(id);
 const today = () => {
@@ -31,11 +32,20 @@ function message(element, text, kind = 'error') {
 
 function showLogin(text = authNotice) {
   byId('login-panel').classList.remove('hidden');
+  byId('password-setup-panel').classList.add('hidden');
   byId('admin-panel').classList.add('hidden');
   byId('client-panel').classList.add('hidden');
   byId('user-label').classList.add('hidden');
   byId('sign-out').classList.add('hidden');
   message(byId('login-message'), text);
+}
+
+function showPasswordSetup(text = '') {
+  byId('login-panel').classList.add('hidden');
+  byId('password-setup-panel').classList.remove('hidden');
+  byId('admin-panel').classList.add('hidden');
+  byId('client-panel').classList.add('hidden');
+  message(byId('password-setup-message'), text);
 }
 
 function option(value, label) {
@@ -78,6 +88,10 @@ async function openSession(user) {
   if (!user) {
     currentUser = null;
     currentProfile = null;
+    if (passwordSetupRequired) {
+      showLogin('El enlace de invitación venció o ya se utilizó. Pide al administrador que te envíe otra invitación.');
+      return;
+    }
     showLogin();
     return;
   }
@@ -85,6 +99,7 @@ async function openSession(user) {
 
   currentUser = user;
   byId('login-panel').classList.add('hidden');
+  byId('password-setup-panel').classList.add('hidden');
   byId('user-label').textContent = user.email || '';
   byId('user-label').classList.remove('hidden');
   byId('sign-out').classList.remove('hidden');
@@ -500,6 +515,30 @@ async function start() {
     busy(form, false);
   });
 
+  byId('password-setup-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = byId('new-password').value;
+    if (password !== byId('confirm-password').value) {
+      message(byId('password-setup-message'), 'Las contraseñas no coinciden.');
+      return;
+    }
+
+    busy(form, true);
+    message(byId('password-setup-message'), '');
+    const { data, error } = await supabaseClient.auth.updateUser({ password });
+    busy(form, false);
+    if (error) {
+      message(byId('password-setup-message'), error.message);
+      return;
+    }
+
+    passwordSetupRequired = false;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    form.reset();
+    await openSession(data.user);
+  });
+
   byId('sign-out').addEventListener('click', async () => {
     authNotice = '';
     const { error } = await supabaseClient.auth.signOut();
@@ -572,12 +611,29 @@ async function start() {
     await refreshAdminData();
   });
 
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    window.setTimeout(() => openSession(session?.user || null), 0);
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const queryParams = new URLSearchParams(window.location.search);
+  passwordSetupRequired = ['invite', 'recovery'].includes(
+    hashParams.get('type') || queryParams.get('type')
+  );
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    window.setTimeout(() => {
+      if (event === 'PASSWORD_RECOVERY'
+        || (passwordSetupRequired && session?.user)) {
+        showPasswordSetup();
+        return;
+      }
+      openSession(session?.user || null);
+    }, 0);
   });
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) {
     showLogin(error.message);
+    return;
+  }
+  if (passwordSetupRequired && data.session?.user) {
+    showPasswordSetup();
     return;
   }
   await openSession(data.session?.user || null);

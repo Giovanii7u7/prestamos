@@ -66,6 +66,19 @@
       </form>
     </section>
 
+    <section class="panel auth hidden" id="password-setup-panel">
+      <h2>Crear contraseña</h2>
+      <p class="muted">Establece una contraseña para tu cuenta y luego podrás consultar tus préstamos.</p>
+      <form id="password-setup-form">
+        <label for="new-password">Nueva contraseña</label>
+        <input id="new-password" type="password" autocomplete="new-password" minlength="8" required>
+        <label for="confirm-password">Confirmar contraseña</label>
+        <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required>
+        <p id="password-setup-message" role="alert"></p>
+        <button class="primary" type="submit">Guardar contraseña</button>
+      </form>
+    </section>
+
     <section class="hidden" id="admin-panel">
       <nav class="tabs" aria-label="Secciones de administración">
         <button class="active" data-tab="loans">Préstamos</button>

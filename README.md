@@ -7,7 +7,7 @@ La aplicación de escritorio existente sigue usando `main.js` e `index.html`. La
 1. En Supabase, conserva habilitado el inicio de sesión por correo y contraseña. No habilites el registro público.
 2. Ejecuta `supabase-functions.sql` en **SQL Editor** después del esquema y las políticas iniciales. Las funciones registran préstamos y pagos con transacciones y comprueban que quien las invoque sea administrador.
 3. La cuenta administrativa debe tener una fila en `public.profiles` con `role = 'admin'`. Cada cliente necesitará una cuenta de autenticación y su fila en `public.profiles` con `role = 'client'`.
-4. No importes el JSON hasta crear los clientes y revisar qué préstamos corresponden a cada perfil.
+4. El administrador puede importar `data.json` desde la sección **Importar respaldo**. Usa el archivo actualizado de `%APPDATA%\prestamos\data.json`, no la copia antigua de la carpeta extraída. La función requiere al menos 22 préstamos y 21 movimientos y solo acepta la importación si la base de datos no tiene préstamos ni movimientos; asigna temporalmente todos los registros a la cuenta administradora. Después, crea los perfiles de clientes y reasigna cada préstamo desde el panel antes de dar acceso a los clientes.
 
 La clave que se usa en el navegador es la clave **Publishable** (o la antigua clave `anon`). Nunca configures `service_role` ni una clave `secret` en la aplicación.
 

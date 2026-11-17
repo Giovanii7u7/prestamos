@@ -72,6 +72,7 @@
         <button data-tab="new-loan">Nuevo préstamo</button>
         <button data-tab="payment">Registrar pago</button>
         <button data-tab="movements">Movimientos</button>
+        <button data-tab="import">Importar respaldo</button>
       </nav>
       <div id="admin-message" role="status"></div>
       <section id="tab-loans" class="panel"></section>
@@ -100,6 +101,17 @@
       <section id="tab-movements" class="panel hidden">
         <h2>Movimientos recientes</h2>
         <div id="admin-movements"></div>
+      </section>
+      <section id="tab-import" class="panel hidden">
+        <h2>Importar respaldo de escritorio</h2>
+        <p class="muted">Selecciona el respaldo actualizado: el que revisamos tiene 22 préstamos y 21 movimientos. Los préstamos quedarán temporalmente asociados a tu cuenta de administrador; ningún cliente podrá verlos hasta que los reasignes.</p>
+        <p class="muted">Esta importación solo se permite cuando la base de datos no tiene préstamos ni movimientos y no se puede deshacer desde aquí.</p>
+        <form id="import-form">
+          <label for="backup-file">Selecciona el data.json respaldado</label>
+          <input id="backup-file" type="file" accept=".json,application/json" required>
+          <p class="muted" id="import-preview" aria-live="polite"></p>
+          <button class="primary" id="import-button" type="submit" disabled>Importar bajo mi cuenta de administrador</button>
+        </form>
       </section>
     </section>
 

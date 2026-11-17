@@ -5,6 +5,7 @@ let clients = [];
 let loans = [];
 let movements = [];
 let authNotice = '';
+let legacyImportData = null;
 
 const byId = (id) => document.getElementById(id);
 const today = () => {
@@ -198,6 +199,15 @@ function renderAdminLoans() {
     const ownerSelect = document.createElement('select');
     ownerSelect.name = 'owner_id';
     fillSelect(ownerSelect, clients, 'Elige un cliente');
+    if (!clients.some((client) => client.id === loan.owner_id)) {
+      ownerSelect.append(option(
+        loan.owner_id,
+        loan.owner_id === currentUser.id
+          ? `${currentProfile.full_name} (temporal)`
+          : loan.name || 'Propietario actual'
+      ));
+      ownerSelect.disabled = false;
+    }
     ownerSelect.value = loan.owner_id;
     addEditField(editor, 'Cliente', ownerSelect);
     addEditField(editor, 'Monto prestado', makeInput('principal', loan.principal));
@@ -320,6 +330,11 @@ function fillPaymentLoans() {
 async function updateLoan(event, id, form) {
   event.preventDefault();
   const values = new FormData(form);
+  const existingLoan = loans.find((loan) => loan.id === id);
+  const selectedOwnerId = values.get('owner_id');
+  const owner = clients.find((client) => client.id === selectedOwnerId);
+  const keepAdminOwner = selectedOwnerId === currentUser.id
+    && existingLoan?.owner_id === currentUser.id;
   const principal = Number(values.get('principal'));
   const pct = Number(values.get('pct'));
   const weekly = Number(values.get('wp'));
@@ -328,12 +343,16 @@ async function updateLoan(event, id, form) {
     setAdminMessage('Revisa el pago semanal y el monto pagado.', 'error');
     return;
   }
-  const owner = clients.find((client) => client.id === values.get('owner_id'));
+  if (!owner && !keepAdminOwner) {
+    setAdminMessage('Selecciona un perfil de cliente válido.', 'error');
+    return;
+  }
+  const ownerName = owner?.full_name || existingLoan.name || existingLoan.person;
   const total = Math.round(principal * (1 + pct / 100));
   const { error } = await supabaseClient.from('loans').update({
-    owner_id: owner?.id,
-    person: owner?.full_name,
-    name: owner?.full_name,
+    owner_id: owner?.id || currentUser.id,
+    person: owner?.full_name || existingLoan.person,
+    name: ownerName,
     principal,
     pct,
     total,
@@ -375,6 +394,71 @@ async function refreshAdminData() {
   } catch (error) {
     setAdminMessage(error.message || 'No se pudieron actualizar los datos.');
   }
+}
+
+function previewLegacyImport(file) {
+  const preview = byId('import-preview');
+  const button = byId('import-button');
+  legacyImportData = null;
+  button.disabled = true;
+  if (!file) {
+    preview.textContent = '';
+    return;
+  }
+
+  file.text().then((text) => {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.loans) || !Array.isArray(data.movs)) {
+      throw new Error('El archivo debe tener arreglos "loans" y "movs", y al menos un préstamo.');
+    }
+    if (data.loans.length < 22 || data.movs.length < 21) {
+      throw new Error('Este archivo parece ser la copia antigua. Selecciona el respaldo actualizado (22 o más préstamos y 21 o más movimientos).');
+    }
+    legacyImportData = data;
+    preview.textContent = `Archivo listo: ${data.loans.length} préstamos y ${data.movs.length} movimientos. Verifica que sea el respaldo actualizado antes de importar.`;
+    button.disabled = false;
+    message(byId('admin-message'), '');
+  }).catch((error) => {
+    preview.textContent = '';
+    legacyImportData = null;
+    setAdminMessage(error instanceof SyntaxError
+      ? 'El archivo no contiene JSON válido.'
+      : error.message || 'No se pudo leer el archivo.');
+  });
+}
+
+async function importLegacyData(event) {
+  event.preventDefault();
+  if (!legacyImportData) {
+    setAdminMessage('Selecciona y revisa el archivo de respaldo primero.');
+    return;
+  }
+  const loanCount = legacyImportData.loans.length;
+  const movementCount = legacyImportData.movs.length;
+  if (!window.confirm(
+    `Se importarán ${loanCount} préstamos y ${movementCount} movimientos bajo tu cuenta de administrador. ¿Continuar?`
+  )) return;
+
+  const form = event.currentTarget;
+  busy(form, true);
+  const { data, error } = await supabaseClient.rpc('import_legacy_data', {
+    p_data: legacyImportData
+  });
+  busy(form, false);
+  if (error) {
+    setAdminMessage(error.message || 'No se pudo importar el respaldo.');
+    return;
+  }
+
+  legacyImportData = null;
+  form.reset();
+  byId('import-preview').textContent = '';
+  setAdminMessage(
+    `Importación completada: ${data.loans} préstamos y ${data.movements} movimientos.`,
+    'success'
+  );
+  await refreshAdminData();
+  document.querySelector('[data-tab="loans"]').click();
 }
 
 function busy(form, state) {
@@ -425,11 +509,16 @@ async function start() {
   document.querySelectorAll('[data-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-tab]').forEach((tab) => tab.classList.toggle('active', tab === button));
-      ['loans', 'new-loan', 'payment', 'movements'].forEach((tab) => {
+      ['loans', 'new-loan', 'payment', 'movements', 'import'].forEach((tab) => {
         byId(`tab-${tab}`).classList.toggle('hidden', tab !== button.dataset.tab);
       });
     });
   });
+
+  byId('backup-file').addEventListener('change', (event) => {
+    previewLegacyImport(event.currentTarget.files[0]);
+  });
+  byId('import-form').addEventListener('submit', importLegacyData);
 
   byId('new-loan-form').addEventListener('submit', async (event) => {
     event.preventDefault();

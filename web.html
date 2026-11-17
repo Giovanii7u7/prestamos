@@ -27,6 +27,20 @@
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
     .loan-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
     .money{font-size:22px;font-weight:700;margin:8px 0}
+    .client-section-title{border-left:5px solid;border-radius:10px;padding:14px 16px;margin:20px 0 12px}
+    .client-section-title h2{margin:0 0 4px}
+    .client-section-title.pending{border-color:#d58b16;background:#fff7e8}
+    .client-section-title.paid{border-color:#218454;background:#edf8f0}
+    .client-loan.pending{border-color:#edd7ab;border-left:5px solid #d58b16;background:#fffdf8}
+    .client-loan.paid{border-color:#c8e5d1;border-left:5px solid #218454;background:#f8fcf9}
+    .client-status{display:inline-block;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700}
+    .client-status.pending{background:#fff0d3;color:#875400}
+    .client-status.paid{background:#dff2e5;color:#17663d}
+    .client-highlights{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    .client-highlight{border-radius:9px;padding:12px;background:rgba(255,255,255,.8)}
+    .client-highlight-label{display:block;color:#667066;font-size:12px;margin-bottom:4px}
+    .client-highlight-value{display:block;font-size:20px;font-weight:700}
+    .client-highlight-value.date{font-size:18px}
     .progress{height:7px;background:#e8ece8;border-radius:8px;overflow:hidden;margin:12px 0}
     .progress span{display:block;height:100%;background:#16815e}
     .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -133,7 +147,20 @@
         <h2>Mis préstamos</h2>
         <p class="muted">Aquí solo aparecen los préstamos asociados a tu cuenta.</p>
       </div>
-      <div class="grid" id="client-loans"></div>
+      <section>
+        <div class="client-section-title pending">
+          <h2>Préstamos por pagar</h2>
+          <p class="muted">Aquí aparecen tus préstamos con saldo pendiente.</p>
+        </div>
+        <div class="grid" id="client-pending-loans"></div>
+      </section>
+      <section>
+        <div class="client-section-title paid">
+          <h2>Préstamos pagados</h2>
+          <p class="muted">Aquí aparecen tus préstamos liquidados.</p>
+        </div>
+        <div class="grid" id="client-paid-loans"></div>
+      </section>
       <section class="panel">
         <h2>Mis pagos y movimientos</h2>
         <div id="client-movements"></div>

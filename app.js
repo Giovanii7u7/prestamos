@@ -289,31 +289,65 @@ function renderAdminMovements() {
 }
 
 function renderClientLoans() {
-  const root = byId('client-loans');
-  root.replaceChildren();
-  if (!loans.length) {
-    appendText(root, 'div', 'panel muted', 'Aún no hay préstamos asociados a tu cuenta.');
-    return;
-  }
+  const pendingRoot = byId('client-pending-loans');
+  const paidRoot = byId('client-paid-loans');
+  pendingRoot.replaceChildren();
+  paidRoot.replaceChildren();
+
+  const pendingLoans = [];
+  const paidLoans = [];
   loans.forEach((loan) => {
+    const remaining = Math.max(0, Number(loan.total) - Number(loan.pa));
+    if (!loan.active || remaining === 0) paidLoans.push(loan);
+    else pendingLoans.push(loan);
+  });
+
+  if (!pendingLoans.length) {
+    appendText(pendingRoot, 'p', 'muted', 'No tienes préstamos por pagar.');
+  } else {
+    pendingLoans.forEach((loan) => renderClientLoan(pendingRoot, loan, false));
+  }
+  if (!paidLoans.length) {
+    appendText(paidRoot, 'p', 'muted', 'Aún no tienes préstamos pagados.');
+  } else {
+    paidLoans.forEach((loan) => renderClientLoan(paidRoot, loan, true));
+  }
+}
+
+function renderClientLoan(root, loan, paid) {
     const card = document.createElement('article');
-    card.className = 'card';
-    appendText(card, 'h3', '', `Préstamo #${loan.id} · ${loan.active ? 'Activo' : 'Liquidado'}`);
-    const percent = loan.total > 0 ? Math.min(100, Math.round((loan.pa / loan.total) * 100)) : 0;
+    card.className = `card client-loan ${paid ? 'paid' : 'pending'}`;
+    appendText(card, 'h3', '', `Préstamo #${loan.id}`);
+    appendText(card, 'span', `client-status ${paid ? 'paid' : 'pending'}`, paid ? 'Pagado' : 'Por pagar');
+    const total = Number(loan.total) || 0;
+    const paidAmount = Number(loan.pa) || 0;
+    const remaining = Math.max(0, total - paidAmount);
+    const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((paidAmount / total) * 100))) : 0;
     const progress = document.createElement('div');
     progress.className = 'progress';
     const fill = document.createElement('span');
     fill.style.width = `${percent}%`;
     progress.append(fill);
     card.append(progress);
+    appendText(card, 'p', 'muted', `${percent}% pagado`);
     moneyLine(card, 'Monto prestado', loan.principal);
     moneyLine(card, 'Total acordado', loan.total);
-    moneyLine(card, 'Pagado', loan.pa);
-    moneyLine(card, 'Pendiente', Math.max(0, loan.total - loan.pa));
-    moneyLine(card, 'Pago semanal', loan.wp);
-    appendText(card, 'p', 'muted', `Inicio: ${dateText(loan.sd)}`);
+    moneyLine(card, 'Pagado', paidAmount);
+    if (!paid) moneyLine(card, 'Saldo pendiente', remaining);
+
+    const highlights = document.createElement('div');
+    highlights.className = 'client-highlights';
+    const weekly = document.createElement('div');
+    weekly.className = 'client-highlight';
+    appendText(weekly, 'span', 'client-highlight-label', 'Pago semanal');
+    appendText(weekly, 'strong', 'client-highlight-value', money(loan.wp));
+    const startDate = document.createElement('div');
+    startDate.className = 'client-highlight';
+    appendText(startDate, 'span', 'client-highlight-label', 'Fecha de inicio');
+    appendText(startDate, 'strong', 'client-highlight-value date', dateText(loan.sd));
+    highlights.append(weekly, startDate);
+    card.append(highlights);
     root.append(card);
-  });
 }
 
 function renderClientMovements() {
